@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
 import { Button, StyleSheet, View } from "react-native";
 import { Audio } from "expo-av";
+import { StorageAccessFramework } from "expo-file-system";
 
 export default function App() {
-  const audios = [
-    require("./assets/audios/1.mp3"),
-    require("./assets/audios/2.mp3"),
-  ];
+  const [audioUris, setAudioUris] = useState([]);
 
   const [sound, setSound] = useState();
 
-  const playAudio = async (audio) => {
+  const playAudio = async (audioUri) => {
     console.log("Loading Sound");
-    const { sound } = await Audio.Sound.createAsync(audio);
+    const { sound } = await Audio.Sound.createAsync({ uri: audioUri });
     setSound(sound);
 
     console.log("Playing Sound");
@@ -22,21 +20,41 @@ export default function App() {
   useEffect(() => {
     return sound
       ? () => {
-        console.log("Unloading Sound");
-        sound.unloadAsync();
-      }
+          console.log("Unloading Sound");
+          sound.unloadAsync();
+        }
       : undefined;
   }, [sound]);
 
+  const handlePickDirectory = async () => {
+    const permissions =
+      await StorageAccessFramework.requestDirectoryPermissionsAsync();
+    if (permissions.granted) {
+      const files = await StorageAccessFramework.readDirectoryAsync(
+        permissions.directoryUri
+      );
+      const uris = files.filter((file) => file.endsWith(".mp3"));
+
+      setAudioUris(uris);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {audios.map((audio, i) => (
-        <Button
-          title={`Audio #${i + 1}`}
-          onPress={(_) => playAudio(audio)}
-          key={i}
-        />
-      ))}
+      <Button
+        title="Open directory picker"
+        onPress={handlePickDirectory}
+        color="#D21404"
+      />
+      <View>
+        {audioUris.map((uri, i) => (
+          <Button
+            title={`Audio #${i + 1}`}
+            onPress={(_) => playAudio(uri)}
+            key={i}
+          />
+        ))}
+      </View>
     </View>
   );
 }
